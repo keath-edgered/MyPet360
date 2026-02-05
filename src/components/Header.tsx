@@ -8,12 +8,15 @@ const Header = () => {
           <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
             <MapPin className="w-4 h-4 text-primary-foreground" />
           </div>
-          <span className="font-semibold text-lg">VetFinder</span>
+          <span className="font-semibold text-lg">MyPet360</span>
         </a>
         
         <nav className="hidden md:flex items-center gap-8">
           <a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
             Find a Vet
+          </a>
+          <a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+            Find Pet Food
           </a>
           <a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
             Emergency

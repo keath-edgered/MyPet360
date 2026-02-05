@@ -1,9 +1,58 @@
-import { Search, MapPin } from "lucide-react";
+import { Search, MapPin, Locate } from "lucide-react";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 
 const Hero = () => {
   const [location, setLocation] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [isLocating, setIsLocating] = useState(false);
+  const navigate = useNavigate();
+
+  const handleUseMyLocation = async () => {
+    setIsLocating(true);
+    try {
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0
+        });
+      });
+
+      const { latitude, longitude } = position.coords;
+      
+      // Try to get location name via reverse geocoding
+      try {
+        const response = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=13&addressdetails=1`
+        );
+        const data = await response.json();
+        const locationName = data.address?.postcode || data.address?.suburb || data.address?.city || `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+        setLocation(locationName);
+      } catch (e) {
+        // Fallback to coordinates if reverse geocoding fails
+        setLocation(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
+      }
+    } catch (error: any) {
+      if (error.code === 1) {
+        alert("Location permission denied. Please enable location access in your browser settings.");
+      } else if (error.code === 2) {
+        alert("Unable to retrieve your location. Please try again or enter manually.");
+      } else {
+        alert("Error getting your location. Please try again.");
+      }
+    } finally {
+      setIsLocating(false);
+    }
+  };
+
+  const handleSearch = () => {
+    const params = new URLSearchParams();
+    if (location) params.append("location", location);
+    if (searchQuery) params.append("query", searchQuery);
+    navigate(`/search?${params.toString()}`);
+  };
 
   return (
     <section className="hero-gradient min-h-[70vh] flex items-center pt-16">
@@ -31,8 +80,22 @@ const Hero = () => {
                   placeholder="Enter suburb or postcode"
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
-                  className="w-full pl-12 pr-4 py-4 bg-muted/50 rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                  className="w-full pl-12 pr-12 py-4 bg-muted/50 rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
                 />
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={handleUseMyLocation}
+                      disabled={isLocating}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-primary disabled:opacity-50 transition-colors cursor-pointer"
+                    >
+                      <Locate className={`w-5 h-5 ${isLocating ? "animate-spin" : ""}`} />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Use current location</p>
+                  </TooltipContent>
+                </Tooltip>
               </div>
               
               <div className="flex-1 relative">
@@ -46,7 +109,10 @@ const Hero = () => {
                 />
               </div>
               
-              <button className="px-8 py-4 bg-accent text-accent-foreground font-medium rounded-xl hover:bg-accent/90 transition-all hover:scale-[1.02] active:scale-[0.98]">
+              <button 
+                onClick={handleSearch}
+                className="px-8 py-4 bg-accent text-accent-foreground font-medium rounded-xl hover:bg-accent/90 transition-all hover:scale-[1.02] active:scale-[0.98]"
+              >
                 Search
               </button>
             </div>

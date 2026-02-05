@@ -62,9 +62,14 @@ const VetCard = ({ name, image, rating, reviews, address, distance, isOpen, spec
           ))}
         </div>
         
-        <button className="mt-5 w-full py-3 bg-primary/5 text-primary font-medium rounded-xl hover:bg-primary hover:text-primary-foreground transition-all">
+        <a
+          href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-5 block w-full text-center py-3 bg-primary/5 text-primary font-medium rounded-xl hover:bg-primary hover:text-primary-foreground transition-all"
+        >
           View Profile
-        </button>
+        </a>
       </div>
     </article>
   );
