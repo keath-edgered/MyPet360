@@ -1,6 +1,6 @@
 import { Search, MapPin, Locate } from "lucide-react";
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 
 const Hero = () => {
@@ -8,6 +8,11 @@ const Hero = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [isLocating, setIsLocating] = useState(false);
   const navigate = useNavigate();
+  const locationHook = useLocation();
+
+  const urlParams = new URLSearchParams(locationHook.search);
+  const categoryParam = urlParams.get('category') || (locationHook.pathname.includes('/pet-food') ? 'petfood' : 'veterinary');
+  const isPetFood = categoryParam === 'petfood';
 
   const handleUseMyLocation = async () => {
     setIsLocating(true);
@@ -51,7 +56,8 @@ const Hero = () => {
     const params = new URLSearchParams();
     if (location) params.append("location", location);
     if (searchQuery) params.append("query", searchQuery);
-    navigate(`/search?${params.toString()}`);
+    const targetPath = isPetFood ? '/pet-food' : '/search';
+    navigate(`${targetPath}?${params.toString()}`);
   };
 
   return (
@@ -59,13 +65,15 @@ const Hero = () => {
       <div className="container">
         <div className="max-w-2xl mx-auto text-center">
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-semibold text-foreground tracking-tight animate-fade-in">
-            Find trusted vets
+            {isPetFood ? 'Find trusted pet food stores' : 'Find trusted vets'}
             <span className="block text-primary mt-2">near you</span>
           </h1>
           
           <p className="mt-6 text-lg text-muted-foreground max-w-lg mx-auto animate-fade-in" style={{ animationDelay: "0.1s" }}>
-            Connect with qualified veterinarians across Australia. 
-            Quality care for your beloved pets, just around the corner.
+            {isPetFood
+              ? "Discover local stores offering a wide range of quality pet food across Australia. The best nutrition for your beloved pets is just around the corner."
+              : "Connect with qualified veterinarians across Australia. Quality care for your beloved pets, just around the corner."
+            }
           </p>
 
           <div 
@@ -102,7 +110,7 @@ const Hero = () => {
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                 <input
                   type="text"
-                  placeholder="Search by name or service"
+                  placeholder={isPetFood ? "Search by brand or product" : "Search by name or service"}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full pl-12 pr-4 py-4 bg-muted/50 rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
@@ -119,18 +127,37 @@ const Hero = () => {
           </div>
 
           <div className="mt-8 flex items-center justify-center gap-6 text-sm text-muted-foreground animate-fade-in" style={{ animationDelay: "0.3s" }}>
-            <span className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-primary"></span>
-              5,000+ Vets
-            </span>
-            <span className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-primary"></span>
-              All States
-            </span>
-            <span className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-primary"></span>
-              24/7 Emergency
-            </span>
+            {isPetFood ? (
+              <>
+                <span className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-primary"></span>
+                  1,000+ Stores
+                </span>
+                <span className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-primary"></span>
+                  Major Brands
+                </span>
+                <span className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-primary"></span>
+                  Local & Independent
+                </span>
+              </>
+            ) : (
+              <>
+                <span className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-primary"></span>
+                  5,000+ Vets
+                </span>
+                <span className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-primary"></span>
+                  All States
+                </span>
+                <span className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-primary"></span>
+                  24/7 Emergency
+                </span>
+              </>
+            )}
           </div>
         </div>
       </div>

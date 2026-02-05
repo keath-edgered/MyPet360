@@ -17,6 +17,7 @@ interface VetSearchResult {
 interface UseOpenStreetMapSearchOptions {
   location: string;
   query: string;
+  category?: 'veterinary' | 'petfood';
 }
 
 interface UseOpenStreetMapSearchResult {
@@ -158,7 +159,7 @@ const localVetsDatabase: VetSearchResult[] = [
   },
 ];
 
-const useOpenStreetMapSearch = ({ location, query }: UseOpenStreetMapSearchOptions): UseOpenStreetMapSearchResult => {
+const useOpenStreetMapSearch = ({ location, query, category = 'veterinary' }: UseOpenStreetMapSearchOptions): UseOpenStreetMapSearchResult => {
   const [data, setData] = useState<VetSearchResult[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -210,8 +211,8 @@ const useOpenStreetMapSearch = ({ location, query }: UseOpenStreetMapSearchOptio
     }
   };
 
-  // Helper: geocode a place and query Overpass for veterinary clinics inside the bbox
-  const fetchVetsForLocation = async (loc: string, q?: string): Promise<VetSearchResult[]> => {
+  // Helper: geocode a place and query Overpass for items inside the bbox
+  const fetchVetsForLocation = async (loc: string, q?: string, category: 'veterinary' | 'petfood' = 'veterinary'): Promise<VetSearchResult[]> => {
     try {
       const geocodeUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(loc)}&format=json&countrycodes=au&limit=1`;
       const geocodeResponse = await fetch(geocodeUrl);
@@ -233,27 +234,37 @@ const useOpenStreetMapSearch = ({ location, query }: UseOpenStreetMapSearchOptio
         bbox = `${latNum - delta},${lonNum - delta},${latNum + delta},${lonNum + delta}`;
       }
 
-      // Build Overpass query
-      let overpassQuery = `[out:json];(node["amenity"="veterinary"](${bbox});way["amenity"="veterinary"](${bbox});`;
-      if (q) {
-        const serviceKeywords = q.toLowerCase();
-        if (serviceKeywords.includes('emergency')) {
-          overpassQuery += `node["emergency:veterinary"="yes"](${bbox});way["emergency:veterinary"="yes"](${bbox});`;
+      // Build Overpass query depending on category
+      let overpassQuery = `[out:json];`;
+      if (category === 'petfood') {
+        overpassQuery += `(`;
+        overpassQuery += `node["shop"="pet"](${bbox});way["shop"="pet"](${bbox});`;
+        overpassQuery += `node["shop"="pet_supplies"](${bbox});way["shop"="pet_supplies"](${bbox});`;
+        overpassQuery += `node["shop"="pet_food"](${bbox});way["shop"="pet_food"](${bbox});`;
+        overpassQuery += `);out center;`;
+      } else {
+        overpassQuery += `(`;
+        overpassQuery += `node["amenity"="veterinary"](${bbox});way["amenity"="veterinary"](${bbox});`;
+        if (q) {
+          const serviceKeywords = q.toLowerCase();
+          if (serviceKeywords.includes('emergency')) {
+            overpassQuery += `node["emergency:veterinary"="yes"](${bbox});way["emergency:veterinary"="yes"](${bbox});`;
+          }
+          if (serviceKeywords.includes('surgery')) {
+            overpassQuery += `node["veterinary:surgery"="yes"](${bbox});way["veterinary:surgery"="yes"](${bbox});`;
+          }
+          if (serviceKeywords.includes('dental')) {
+            overpassQuery += `node["veterinary:dental"="yes"](${bbox});way["veterinary:dental"="yes"](${bbox});`;
+          }
+          if (serviceKeywords.includes('exotic')) {
+            overpassQuery += `node["veterinary:exotic"="yes"](${bbox});way["veterinary:exotic"="yes"](${bbox});`;
+          }
+          if (serviceKeywords.includes('vaccination') || serviceKeywords.includes('vaccine')) {
+            overpassQuery += `node["veterinary:vaccination"="yes"](${bbox});way["veterinary:vaccination"="yes"](${bbox});`;
+          }
         }
-        if (serviceKeywords.includes('surgery')) {
-          overpassQuery += `node["veterinary:surgery"="yes"](${bbox});way["veterinary:surgery"="yes"](${bbox});`;
-        }
-        if (serviceKeywords.includes('dental')) {
-          overpassQuery += `node["veterinary:dental"="yes"](${bbox});way["veterinary:dental"="yes"](${bbox});`;
-        }
-        if (serviceKeywords.includes('exotic')) {
-          overpassQuery += `node["veterinary:exotic"="yes"](${bbox});way["veterinary:exotic"="yes"](${bbox});`;
-        }
-        if (serviceKeywords.includes('vaccination') || serviceKeywords.includes('vaccine')) {
-          overpassQuery += `node["veterinary:vaccination"="yes"](${bbox});way["veterinary:vaccination"="yes"](${bbox});`;
-        }
+        overpassQuery += `);out center;`;
       }
-      overpassQuery += `);out center;`;
 
       // Use retry helper for Overpass API call
       const overpassData = await fetchWithRetry(overpassQuery);
@@ -307,7 +318,7 @@ const useOpenStreetMapSearch = ({ location, query }: UseOpenStreetMapSearchOptio
       try {
         // If query provided (no location), use OpenStreetMap search
         if (!location && query) {
-          const clinics = await fetchVetsForLocation(query, query);
+          const clinics = await fetchVetsForLocation(query, query, category);
           if (mounted) {
             setData(clinics);
           }
@@ -350,31 +361,38 @@ const useOpenStreetMapSearch = ({ location, query }: UseOpenStreetMapSearchOptio
           }
         }
 
-        // Step 2: Build Overpass query with service filter
-        let overpassQuery = `[out:json];(node["amenity"="veterinary"](${bbox});way["amenity"="veterinary"](${bbox});`;
-        
-        // Add optional service/specialty filters based on query
-        if (query) {
-          const serviceKeywords = query.toLowerCase();
-          
-          if (serviceKeywords.includes('emergency')) {
-            overpassQuery += `node["emergency:veterinary"="yes"](${bbox});way["emergency:veterinary"="yes"](${bbox});`;
+        // Step 2: Build Overpass query depending on category (veterinary or petfood)
+        let overpassQuery = `[out:json];`;
+        if (category === 'petfood') {
+          overpassQuery += `(`;
+          overpassQuery += `node["shop"="pet"](${bbox});way["shop"="pet"](${bbox});`;
+          overpassQuery += `node["shop"="pet_supplies"](${bbox});way["shop"="pet_supplies"](${bbox});`;
+          overpassQuery += `node["shop"="pet_food"](${bbox});way["shop"="pet_food"](${bbox});`;
+          overpassQuery += `);out center;`;
+        } else {
+          overpassQuery += `(`;
+          overpassQuery += `node["amenity"="veterinary"](${bbox});way["amenity"="veterinary"](${bbox});`;
+          // Add optional service/specialty filters based on query
+          if (query) {
+            const serviceKeywords = query.toLowerCase();
+            if (serviceKeywords.includes('emergency')) {
+              overpassQuery += `node["emergency:veterinary"="yes"](${bbox});way["emergency:veterinary"="yes"](${bbox});`;
+            }
+            if (serviceKeywords.includes('surgery')) {
+              overpassQuery += `node["veterinary:surgery"="yes"](${bbox});way["veterinary:surgery"="yes"](${bbox});`;
+            }
+            if (serviceKeywords.includes('dental')) {
+              overpassQuery += `node["veterinary:dental"="yes"](${bbox});way["veterinary:dental"="yes"](${bbox});`;
+            }
+            if (serviceKeywords.includes('exotic')) {
+              overpassQuery += `node["veterinary:exotic"="yes"](${bbox});way["veterinary:exotic"="yes"](${bbox});`;
+            }
+            if (serviceKeywords.includes('vaccination') || serviceKeywords.includes('vaccine')) {
+              overpassQuery += `node["veterinary:vaccination"="yes"](${bbox});way["veterinary:vaccination"="yes"](${bbox});`;
+            }
           }
-          if (serviceKeywords.includes('surgery')) {
-            overpassQuery += `node["veterinary:surgery"="yes"](${bbox});way["veterinary:surgery"="yes"](${bbox});`;
-          }
-          if (serviceKeywords.includes('dental')) {
-            overpassQuery += `node["veterinary:dental"="yes"](${bbox});way["veterinary:dental"="yes"](${bbox});`;
-          }
-          if (serviceKeywords.includes('exotic')) {
-            overpassQuery += `node["veterinary:exotic"="yes"](${bbox});way["veterinary:exotic"="yes"](${bbox});`;
-          }
-          if (serviceKeywords.includes('vaccination') || serviceKeywords.includes('vaccine')) {
-            overpassQuery += `node["veterinary:vaccination"="yes"](${bbox});way["veterinary:vaccination"="yes"](${bbox});`;
-          }
+          overpassQuery += `);out center;`;
         }
-        
-        overpassQuery += `);out center;`;
 
         // Use retry helper for Overpass API call
         const overpassData = await fetchWithRetry(overpassQuery);

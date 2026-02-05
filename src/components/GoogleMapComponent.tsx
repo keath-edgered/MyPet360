@@ -16,9 +16,10 @@ interface GoogleMapComponentProps {
   location?: string;
   zoom?: number;
   selectedVetId?: string;
+  onSelectVet?: (id: string) => void;
 }
 
-const GoogleMapComponent = ({ vets, location = '', zoom = 12, selectedVetId }: GoogleMapComponentProps) => {
+const GoogleMapComponent = ({ vets, location = '', zoom = 12, selectedVetId, onSelectVet }: GoogleMapComponentProps) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const markersRef = useRef<{ [key: string]: L.Marker }>({});
@@ -43,18 +44,22 @@ const GoogleMapComponent = ({ vets, location = '', zoom = 12, selectedVetId }: G
       }).addTo(mapRef.current);
     }
 
-    // Clear existing markers
-    mapRef.current.eachLayer((layer) => {
-      if (layer instanceof L.Marker) {
-        mapRef.current!.removeLayer(layer);
-      }
+    // Clear existing markers and our refs
+    Object.values(markersRef.current).forEach((m) => {
+      if (mapRef.current && mapRef.current.hasLayer(m)) mapRef.current.removeLayer(m);
     });
+    markersRef.current = {};
 
     // Add markers for each vet
     vets.forEach((vet) => {
       if (vet.latitude && vet.longitude) {
         const marker = L.marker([vet.latitude, vet.longitude]).addTo(mapRef.current!);
-        
+
+        // when marker is clicked, notify parent to select the card
+        marker.on('click', () => {
+          if (onSelectVet) onSelectVet(vet.id);
+        });
+
         marker.bindPopup(`
           <div class="p-3 min-w-[250px]">
             <h3 class="font-bold text-sm">${vet.name}</h3>
