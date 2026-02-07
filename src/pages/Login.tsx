@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { PawPrint, Mail, Lock, Eye, EyeOff } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { auth, googleProvider } from "@/firebase/firebase";
+import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
 const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
@@ -15,6 +17,28 @@ const Login = () => {
     e.preventDefault();
     // TODO: integrate with Lovable Cloud auth
     console.log(isSignUp ? "Sign up" : "Login", { email, password, name });
+  };
+  const navigate = useNavigate();
+  const handleGoogleSignIn = async () => {
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+      // This gives you a Google Access Token. You can use it to access the Google API.
+      const credential = GoogleAuthProvider.credentialFromResult(result);
+      const token = credential?.accessToken;
+      // The signed-in user info.
+      const user = result.user;
+      console.log("Signed in with Google: ", { user, token });
+      // On successful login, redirect to the home page.
+      navigate("/");
+    } catch (error: any) {
+      // Handle Errors here.
+      const errorCode = error.code;
+      const errorMessage = error.message;
+      // The email of the user's account used.
+      const email = error.customData?.email;
+      console.error("Google Sign-In Error:", { errorCode, errorMessage, email });
+      // TODO: Display a user-friendly error message
+    }
   };
   return (
     <div className="flex min-h-screen flex-col bg-background md:flex-row">
@@ -131,6 +155,7 @@ const Login = () => {
             variant="outline"
             className="w-full rounded-full"
             type="button"
+            onClick={handleGoogleSignIn}
           >
             <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
               <path
