@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 
-const heroPets = "https://images.unsplash.com/photo-1543852786-1cf6624b9987?w=1200&h=900&fit=crop&q=80";
+const heroPets = "https://img.freepik.com/free-photo/young-lightskinned-brunette-woman-kisses-her-beloved-dog-tightly-while-holding-arms-pink-background-love-pets-joy-tenderness_197531-31334.jpg?t=st=1770445490~exp=1770449090~hmac=5c51dd0064ef1927891bf18561fa5f38610a502c7ddc5d83ccc2f281f492e524";
 
 const fadeUp: Variants = {
   hidden: { opacity: 0, y: 30 },
@@ -263,9 +263,9 @@ const About = () => {
           <p className="mb-8 text-muted-foreground">
             Join thousands of pet parents who trust MyPet360 every day.
           </p>
-          <button className="rounded-full bg-accent px-10 py-3.5 font-semibold text-accent-foreground transition-all hover:scale-105 hover:shadow-lg">
+         <button onClick={() => window.location.href = './Login'} className="rounded-full bg-accent px-10 py-3.5 font-semibold text-accent-foreground transition-all hover:scale-105 hover:shadow-lg">
             Get Started Free
-          </button>
+        </button>
         </motion.div>
       </section>
 

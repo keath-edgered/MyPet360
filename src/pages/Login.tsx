@@ -5,8 +5,11 @@ import { Link, useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import Header from "@/components/Header";
 import { auth, googleProvider } from "@/firebase/firebase";
 import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
+import { toast } from "sonner";
+
 const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
@@ -18,30 +21,34 @@ const Login = () => {
     // TODO: integrate with Lovable Cloud auth
     console.log(isSignUp ? "Sign up" : "Login", { email, password, name });
   };
+
   const navigate = useNavigate();
+
   const handleGoogleSignIn = async () => {
     try {
       const result = await signInWithPopup(auth, googleProvider);
-      // This gives you a Google Access Token. You can use it to access the Google API.
-      const credential = GoogleAuthProvider.credentialFromResult(result);
-      const token = credential?.accessToken;
-      // The signed-in user info.
       const user = result.user;
-      console.log("Signed in with Google: ", { user, token });
+
+      const username = user.displayName || user.email;
+
+      toast.success(
+        <span style={{ color: '#5CA28F', fontWeight: 'bold' }}>
+            Welcome, {username}!
+        </span>
+        );
+
       // On successful login, redirect to the home page.
       navigate("/");
     } catch (error: any) {
-      // Handle Errors here.
-      const errorCode = error.code;
-      const errorMessage = error.message;
-      // The email of the user's account used.
-      const email = error.customData?.email;
-      console.error("Google Sign-In Error:", { errorCode, errorMessage, email });
-      // TODO: Display a user-friendly error message
+      console.error("Google Sign-In Error:", error);
+      toast.error(error.message || "Failed to sign in with Google.");
     }
   };
+
   return (
-    <div className="flex min-h-screen flex-col bg-background md:flex-row">
+    <>
+      <Header />
+      <div className="flex min-h-screen flex-col bg-background pt-16 md:flex-row">
       {/* Left - Branding panel */}
       <motion.div
         initial={{ opacity: 0, x: -40 }}
@@ -190,6 +197,7 @@ const Login = () => {
         </motion.div>
       </div>
     </div>
+    </>
   );
 };
 
