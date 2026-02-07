@@ -37,8 +37,8 @@ const Login = () => {
         </span>
         );
 
-      // On successful login, redirect to the home page.
-      navigate("/");
+      // On successful login, redirect to the dashboard page.
+      navigate("/dashboard");
     } catch (error: any) {
       console.error("Google Sign-In Error:", error);
       toast.error(error.message || "Failed to sign in with Google.");
