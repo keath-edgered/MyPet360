@@ -9,6 +9,7 @@ import PetFood from "./pages/PetFood";
 import TestMap from "./pages/TestMap";
 import NotFound from "./pages/NotFound";
 import About from "./pages/About";
+import Login from "./pages/Login";
 
 const queryClient = new QueryClient();
 
@@ -25,6 +26,7 @@ const App = () => (
           <Route path="/search" element={<SearchResults />} />
           <Route path="/pet-food-search" element={<PetFood />} />
           <Route path="/test-map" element={<TestMap />} />
+          <Route path="/login" element={<Login />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
