@@ -1,4 +1,4 @@
-import { Shield, Heart, Clock, Award } from "lucide-react";
+import { Shield, Heart, Clock, Award, Calendar, CalendarClock } from "lucide-react";
 
 const features = [
   {
@@ -12,9 +12,9 @@ const features = [
     description: "Find clinics known for their gentle approach with anxious pets",
   },
   {
-    icon: Clock,
-    title: "24/7 Emergency",
-    description: "Quickly locate after-hours and emergency veterinary services",
+    icon: CalendarClock,
+    title: "Schedule Bookings",
+    description: "Quickly locate and book appointments with veterinary clinics.",
   },
   {
     icon: Award,

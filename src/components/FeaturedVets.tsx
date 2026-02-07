@@ -68,7 +68,7 @@ const FeaturedVets = () => {
           {vets.map((vet, index) => (
             <div 
               key={vet.name}
-              className="animate-fade-in-up"
+              className="animate-fade-in-up h-full"
               style={{ animationDelay: `${index * 0.1}s` }}
             >
               <VetCard {...vet} />

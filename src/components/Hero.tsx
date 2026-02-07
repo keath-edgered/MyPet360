@@ -27,18 +27,13 @@ const Hero = () => {
 
       const { latitude, longitude } = position.coords;
       
-      // Try to get location name via reverse geocoding
-      try {
-        const response = await fetch(
-          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=13&addressdetails=1`
-        );
-        const data = await response.json();
-        const locationName = data.address?.postcode || data.address?.suburb || data.address?.city || `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
-        setLocation(locationName);
-      } catch (e) {
-        // Fallback to coordinates if reverse geocoding fails
-        setLocation(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
-      }
+      // Use coordinates for search so the hook queries by bbox near these coords
+      const coordString = `${latitude.toFixed(6)},${longitude.toFixed(6)}`;
+      setLocation(coordString);
+
+      // Trigger the search/navigation so users immediately see nearby results
+      // `handleSearch` uses `isPetFood` to route to the correct results page
+      handleSearch();
     } catch (error: any) {
       if (error.code === 1) {
         alert("Location permission denied. Please enable location access in your browser settings.");
@@ -56,12 +51,12 @@ const Hero = () => {
     const params = new URLSearchParams();
     if (location) params.append("location", location);
     if (searchQuery) params.append("query", searchQuery);
-    const targetPath = isPetFood ? '/pet-food' : '/search';
+    const targetPath = isPetFood ? '/pet-food-search' : '/search';
     navigate(`${targetPath}?${params.toString()}`);
   };
 
   return (
-    <section className="hero-gradient min-h-[70vh] flex items-center pt-16">
+    <section className="hero-gradient min-h-[100vh] flex items-center pt-16">
       <div className="container">
         <div className="max-w-2xl mx-auto text-center">
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-semibold text-foreground tracking-tight animate-fade-in">
@@ -154,7 +149,7 @@ const Hero = () => {
                 </span>
                 <span className="flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-primary"></span>
-                  24/7 Emergency
+                  Bookings Available
                 </span>
               </>
             )}
