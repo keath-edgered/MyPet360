@@ -1,12 +1,13 @@
-import { useState } from "react";
+import { useState, lazy, Suspense } from "react";
 import { motion } from "framer-motion";
 import { PawPrint, Plus, MessageSquare, LogOut, MapPin, Clock, ChevronRight, User, Inbox } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+const InboxView = lazy(() => import("@/pages/InboxView"));
 
 const mockMissingPets = [
   {
@@ -29,39 +30,9 @@ const mockMissingPets = [
   },
 ];
 
-const mockMessages = [
-  {
-    id: 1,
-    from: "Sarah M.",
-    initials: "SM",
-    petName: "Buddy",
-    preview: "Hi! I think I saw your dog near the park this morning around 8am...",
-    time: "2h ago",
-    unread: true,
-  },
-  {
-    id: 2,
-    from: "James K.",
-    initials: "JK",
-    petName: "Buddy",
-    preview: "I spotted a golden retriever on Oak Street yesterday, could it be yours?",
-    time: "5h ago",
-    unread: true,
-  },
-  {
-    id: 3,
-    from: "Lisa T.",
-    initials: "LT",
-    petName: "Whiskers",
-    preview: "There's a tabby cat that's been hanging around my garden for a few days...",
-    time: "1d ago",
-    unread: false,
-  },
-];
-
 const Dashboard = () => {
   const [activeTab, setActiveTab] = useState("pets");
-  const unreadCount = mockMessages.filter((m) => m.unread).length;
+  // Unread count will be handled within InboxView. It can be brought back here later if needed.
 
   return (
     <div className="min-h-screen bg-background">
@@ -105,11 +76,7 @@ const Dashboard = () => {
               <TabsTrigger value="inbox" className="gap-2">
                 <Inbox className="h-4 w-4" />
                 Inbox
-                {unreadCount > 0 && (
-                  <Badge className="ml-1 h-5 min-w-5 rounded-full bg-accent px-1.5 text-xs text-accent-foreground">
-                    {unreadCount}
-                  </Badge>
-                )}
+                {/* The unread count badge can be added back by lifting state from InboxView */}
               </TabsTrigger>
             </TabsList>
 
@@ -171,51 +138,10 @@ const Dashboard = () => {
             </TabsContent>
 
             {/* Inbox Tab */}
-            <TabsContent value="inbox" className="space-y-3">
-              <p className="text-sm text-muted-foreground">
-                Messages from people who may have found your pet.
-              </p>
-              {mockMessages.map((msg, i) => (
-                <motion.div
-                  key={msg.id}
-                  initial={{ opacity: 0, y: 15 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.08, duration: 0.35 }}
-                >
-                  <Card className="cursor-pointer transition-all hover:-translate-y-0.5 hover:card-shadow-hover">
-                    <CardContent className="flex items-center gap-4 p-5">
-                      <Avatar className="h-10 w-10 shrink-0">
-                        <AvatarFallback className="bg-secondary text-sm font-semibold text-secondary-foreground">
-                          {msg.initials}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-semibold text-card-foreground">{msg.from}</span>
-                          <span className="text-xs text-muted-foreground">· re: {msg.petName}</span>
-                          {msg.unread && (
-                            <span className="h-2 w-2 rounded-full bg-accent" />
-                          )}
-                        </div>
-                        <p className="mt-0.5 truncate text-sm text-muted-foreground">
-                          {msg.preview}
-                        </p>
-                      </div>
-                      <div className="flex shrink-0 items-center gap-2">
-                        <span className="text-xs text-muted-foreground">{msg.time}</span>
-                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                      </div>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              ))}
-              {mockMessages.length === 0 && (
-                <div className="py-16 text-center text-muted-foreground">
-                  <MessageSquare className="mx-auto mb-3 h-10 w-10 opacity-30" />
-                  <p className="font-medium">No messages yet</p>
-                  <p className="mt-1 text-sm">When someone spots your pet, they'll message you here.</p>
-                </div>
-              )}
+            <TabsContent value="inbox">
+              <Suspense fallback={<div className="py-16 text-center text-muted-foreground">Loading inbox...</div>}>
+                <InboxView />
+              </Suspense>
             </TabsContent>
           </Tabs>
         </motion.div>
