@@ -1,6 +1,6 @@
 import { useState, lazy, Suspense, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import { PawPrint, Plus, MessageSquare, MapPin, Clock, Inbox, Trash2 } from "lucide-react";
+import { PawPrint, Plus, MessageSquare, MapPin, Clock, Inbox, Trash2, FilePenLine, MoreHorizontal } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -19,6 +19,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import Header from "@/components/Header";
 import { auth, db } from "@/firebase/firebase";
 import {
@@ -72,6 +79,7 @@ const Dashboard = () => {
   const markerLayerRef = useRef<L.LayerGroup | null>(null); // To manage markers easily
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const [currentUser, setCurrentUser] = useState<User | null>(auth.currentUser);
+  const [petToDelete, setPetToDelete] = useState<MissingPet | null>(null);
 
   const handleDelete = async (petId: string) => {
     try {
@@ -219,7 +227,7 @@ const Dashboard = () => {
   }, [activeTab]);
 
   const handlePetClick = async (pet: MissingPet) => {
-    const currentUser = auth.currentUser;
+    // Use the currentUser from state, which is updated by onAuthStateChanged
     if (!currentUser) {
       toast.error("You must be logged in to contact the owner.");
       navigate("/login");
@@ -249,18 +257,20 @@ const Dashboard = () => {
 
     if (!chatExists) {
       // Create a new conversation
-      const userInitials = currentUser.displayName?.split(" ").map(n => n[0]).join("") || "U";
-      const ownerInitials = pet.ownerName?.split(" ").map(n => n[0]).join("") || "O";
+      const userDisplayName = currentUser.displayName || (currentUser.email || '').split('@')[0] || 'User';
+      const userInitials = userDisplayName.split(' ').map(n => n[0]).join('').toUpperCase() || 'U';
+      const ownerDisplayName = pet.ownerName || 'Owner';
+      const ownerInitials = ownerDisplayName.split(' ').map(n => n[0]).join('').toUpperCase() || 'O';
 
       await addDoc(chatsRef, {
         participants: [currentUser.uid, pet.ownerId],
         participantInfo: {
           [currentUser.uid]: {
-            name: currentUser.displayName,
+            name: userDisplayName,
             initials: userInitials,
           },
           [pet.ownerId]: {
-            name: pet.ownerName,
+            name: ownerDisplayName,
             initials: ownerInitials,
           },
         },
@@ -355,34 +365,25 @@ const Dashboard = () => {
                         </Badge>
                         {currentUser?.uid === pet.ownerId && (
                           <div onClick={(e) => e.stopPropagation()}>
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-9 w-9 rounded-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                                >
-                                  <Trash2 className="h-5 w-5" />
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" className="h-8 w-8 p-0 rounded-full">
+                                  <span className="sr-only">Open menu</span>
+                                  <MoreHorizontal className="h-4 w-4" />
                                 </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent className="z-[1100]">
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    This action cannot be undone. This will permanently delete the listing for <strong>{pet.petName}</strong>.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                  <AlertDialogAction
-                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                    onClick={() => handleDelete(pet.id)}
-                                  >
-                                    Delete
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => navigate(`/report-missing-pet/${pet.id}`)}>
+                                  <FilePenLine className="mr-2 h-4 w-4" />
+                                  <span>Edit</span>
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => setPetToDelete(pet)} className="text-destructive focus:text-destructive">
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  <span>Delete</span>
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </div>
                         )}
                       </div>
@@ -407,6 +408,29 @@ const Dashboard = () => {
             </TabsContent>
           </Tabs>
         </motion.div>
+        <AlertDialog open={!!petToDelete} onOpenChange={(open) => { if (!open) setPetToDelete(null); }}>
+          <AlertDialogContent className="z-[1100]">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This action cannot be undone. This will permanently delete the listing for <strong>{petToDelete?.petName}</strong>.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={async () => {
+                  if (petToDelete) {
+                    await handleDelete(petToDelete.id);
+                  }
+                }}
+              >
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </main>
     </div>
   );

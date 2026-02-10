@@ -61,6 +61,11 @@ const Header = () => {
           <Link to="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
             Emergency
           </Link>
+          {!user && (
+          <Link to="/login" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+            Report Missing Pet
+          </Link>
+          )}
           <Link to="/about" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
             About
           </Link>

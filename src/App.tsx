@@ -26,6 +26,7 @@ function App() {
           <Route path="/pet-food-search" element={<PetFood />} />
           <Route path="/about" element={<About />} />
           <Route path="/report-missing-pet" element={<ReportMissingPet />} />
+          <Route path="/report-missing-pet/:petId" element={<ReportMissingPet />} />
           <Route path="/test-map" element={<TestMap />} />
           <Route path="*" element={<NotFound />} />
         </Routes>

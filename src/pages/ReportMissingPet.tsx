@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { auth, db } from "@/firebase/firebase";
-import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { addDoc, collection, serverTimestamp, doc, getDoc, updateDoc } from "firebase/firestore";
 import { toast } from "sonner";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -38,6 +38,8 @@ interface LocationSearchResult {
 }
 
 const ReportMissingPet = () => {
+  const { petId } = useParams<{ petId: string }>();
+  const isEditMode = !!petId;
   const navigate = useNavigate();
   const [petName, setPetName] = useState("");
   const [petType, setPetType] = useState("");
@@ -66,21 +68,47 @@ const ReportMissingPet = () => {
     }
   }, []);
 
-  const updateMarker = (lat: number, lng: number) => {
-    if (mapRef.current) {
-      if (markerRef.current) {
-        markerRef.current.setLatLng([lat, lng]);
-      } else {
-        markerRef.current = L.marker([lat, lng]).addTo(mapRef.current);
-      }
-      mapRef.current.setView([lat, lng], 15);
-      setPinnedLocation({ lat, lng });
+  useEffect(() => {
+    if (isEditMode && petId) {
+      const fetchPetData = async () => {
+        const docRef = doc(db, "missing_pets", petId);
+        const docSnap = await getDoc(docRef);
+
+        if (docSnap.exists()) {
+          const petData = docSnap.data();
+          if (petData.ownerId !== auth.currentUser?.uid) {
+            toast.error("You are not authorized to edit this listing.");
+            navigate("/dashboard");
+            return;
+          }
+
+          setPetName(petData.petName);
+          if (!["Dog", "Cat", "Bird"].includes(petData.petType)) {
+            setPetType("Other");
+            setOtherPetType(petData.petType);
+          } else {
+            setPetType(petData.petType);
+          }
+          setBreed(petData.breed || "");
+          setDescription(petData.description || "");
+          setLastSeen(petData.lastSeenLocationName);
+          setIsPublic(petData.isPublic);
+          if (petData.location) {
+            const { latitude, longitude } = petData.location;
+            setPinnedLocation({ lat: latitude, lng: longitude });
+          }
+        } else {
+          toast.error("Pet listing not found.");
+          navigate("/dashboard");
+        }
+      };
+      fetchPetData();
     }
-  };
+  }, [isEditMode, petId, navigate]);
 
   const handleMapClick = async (e: L.LeafletMouseEvent) => {
     const { lat, lng } = e.latlng;
-    updateMarker(lat, lng);
+    setPinnedLocation({ lat, lng });
     
     // Reverse geocode to get address
     try {
@@ -98,7 +126,7 @@ const ReportMissingPet = () => {
   const handleSearchResultClick = (result: LocationSearchResult) => {
     const lat = parseFloat(result.lat);
     const lon = parseFloat(result.lon);
-    updateMarker(lat, lon);
+    setPinnedLocation({ lat, lng: lon });
     setLastSeen(result.display_name);
     setSearchResults([]);
     setSearchQuery("");
@@ -116,6 +144,18 @@ const ReportMissingPet = () => {
     }
   };
 
+  useEffect(() => {
+    if (mapRef.current && pinnedLocation) {
+      const { lat, lng } = pinnedLocation;
+      if (markerRef.current) {
+        markerRef.current.setLatLng([lat, lng]);
+      } else {
+        markerRef.current = L.marker([lat, lng]).addTo(mapRef.current);
+      }
+      mapRef.current.setView([lat, lng], 15);
+    }
+  }, [pinnedLocation]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const currentUser = auth.currentUser;
@@ -130,28 +170,38 @@ const ReportMissingPet = () => {
     }
 
     setIsSubmitting(true);
+    const petDataObject = {
+      petName,
+      petType: petType === "Other" ? otherPetType : petType,
+      breed,
+      description,
+      lastSeenLocationName: lastSeen,
+      location: {
+        latitude: pinnedLocation.lat,
+        longitude: pinnedLocation.lng,
+      },
+      isPublic,
+      status: 'missing' as const,
+    };
+
     try {
-      await addDoc(collection(db, "missing_pets"), {
-        ownerId: currentUser.uid,
-        ownerName: currentUser.displayName,
-        petName,
-        petType: petType === "Other" ? otherPetType : petType,
-        breed,
-        description,
-        lastSeenLocationName: lastSeen,
-        location: {
-          latitude: pinnedLocation.lat,
-          longitude: pinnedLocation.lng,
-        },
-        isPublic,
-        status: 'missing',
-        createdAt: serverTimestamp(),
-      });
-      toast.success(`${petName} has been reported missing.`);
+      if (isEditMode && petId) {
+        const docRef = doc(db, "missing_pets", petId);
+        await updateDoc(docRef, petDataObject);
+        toast.success(`${petName}'s listing has been updated.`);
+      } else {
+        await addDoc(collection(db, "missing_pets"), {
+          ...petDataObject,
+          ownerId: currentUser.uid,
+          ownerName: currentUser.displayName,
+          createdAt: serverTimestamp(),
+        });
+        toast.success(`${petName} has been reported missing.`);
+      }
       navigate("/dashboard");
     } catch (error) {
       console.error("Error reporting missing pet:", error);
-      toast.error("There was an error submitting your report. Please try again.");
+      toast.error(`There was an error ${isEditMode ? 'updating' : 'submitting'} your report. Please try again.`);
     } finally {
       setIsSubmitting(false);
     }
@@ -165,7 +215,9 @@ const ReportMissingPet = () => {
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Dashboard
         </Button>
-        <h1 className="mb-6 text-3xl font-bold text-foreground">Report a Missing Pet</h1>
+        <h1 className="mb-6 text-3xl font-bold text-foreground">
+          {isEditMode ? "Edit Missing Pet Report" : "Report a Missing Pet"}
+        </h1>
         <form onSubmit={handleSubmit} className="space-y-8">
           <Card>
             <CardHeader>
@@ -263,7 +315,7 @@ const ReportMissingPet = () => {
             </CardContent>
           </Card>
           <Button type="submit" disabled={isSubmitting} className="w-full md:w-full md:ml-full md:block">
-            {isSubmitting ? "Submitting..." : "Submit Report"}
+            {isSubmitting ? (isEditMode ? "Saving..." : "Submitting...") : (isEditMode ? "Save Changes" : "Submit Report")}
           </Button>
         </form>
       </main>

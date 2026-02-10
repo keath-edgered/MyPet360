@@ -35,11 +35,11 @@ const Login = () => {
     if (isSignUp) {
       try {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const displayName = name.trim() || email.split('@')[0];
         if (auth.currentUser) {
-          await updateProfile(auth.currentUser, { displayName: name });
+          await updateProfile(auth.currentUser, { displayName });
         }
-        const user = userCredential.user;
-        const username = name || user.email;
+        const username = displayName;
         toast.success(
           <span style={{ color: '#5CA28F', fontWeight: 'bold' }}>
             Welcome, {username}! Your account has been created.
