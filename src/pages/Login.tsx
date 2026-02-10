@@ -7,7 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import Header from "@/components/Header";
 import { auth, googleProvider } from "@/firebase/firebase";
-import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
+import {
+  signInWithPopup,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  updateProfile,
+  GoogleAuthProvider,
+} from "firebase/auth";
 import { toast } from "sonner";
 
 const Login = () => {
@@ -16,13 +22,62 @@ const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    // TODO: integrate with Lovable Cloud auth
-    console.log(isSignUp ? "Sign up" : "Login", { email, password, name });
-  };
-
   const navigate = useNavigate();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const errorToastStyle = {
+      background: "#E53E3E",
+      color: "#fff",
+      fontWeight: "bold",
+    };
+
+    if (isSignUp) {
+      try {
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        if (auth.currentUser) {
+          await updateProfile(auth.currentUser, { displayName: name });
+        }
+        const user = userCredential.user;
+        const username = name || user.email;
+        toast.success(
+          <span style={{ color: '#5CA28F', fontWeight: 'bold' }}>
+            Welcome, {username}! Your account has been created.
+          </span>
+        );
+        navigate("/dashboard");
+      } catch (error: any) {
+        console.error("Sign Up Error:", error);
+        let errorMessage = "Failed to create an account.";
+        if (error.code === 'auth/email-already-in-use') {
+          errorMessage = 'This email is already in use. Please sign in.';
+        } else if (error.code === 'auth/invalid-email') {
+          errorMessage = 'Please enter a valid email address.';
+        } else if (error.code === 'auth/weak-password') {
+          errorMessage = 'Password must be at least 6 characters long.';
+        }
+        toast.error(errorMessage, { style: errorToastStyle });
+      }
+    } else {
+      try {
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+        const username = user.displayName || user.email;
+        toast.success(
+          <span style={{ color: '#5CA28F', fontWeight: 'bold' }}>
+            Welcome back, {username}!
+          </span>
+        );
+        navigate("/dashboard");
+      } catch (error: any) {
+        console.error("Sign In Error:", error);
+        const errorMessage = (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password')
+          ? 'Invalid email or password.'
+          : 'Failed to sign in. Please try again.';
+        toast.error(errorMessage, { style: errorToastStyle });
+      }
+    }
+  };
 
   const handleGoogleSignIn = async () => {
     try {
@@ -41,7 +96,13 @@ const Login = () => {
       navigate("/dashboard");
     } catch (error: any) {
       console.error("Google Sign-In Error:", error);
-      toast.error(error.message || "Failed to sign in with Google.");
+      toast.error(error.message || "Failed to sign in with Google.", {
+        style: {
+          background: "#E53E3E",
+          color: "#fff",
+          fontWeight: "bold",
+        },
+      });
     }
   };
 
@@ -98,6 +159,7 @@ const Login = () => {
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     className="pl-10"
+                    required
                   />
                 </div>
               </div>

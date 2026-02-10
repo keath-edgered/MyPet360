@@ -30,7 +30,7 @@ const PetFood = () => {
     <div className="min-h-screen bg-background flex flex-col">
       <Header />
       
-      <div className="flex-1 py-8">
+      <div className="flex-1 pt-24 pb-8">
         <div className="container">
           <button
             onClick={() => navigate('/pet-food')}

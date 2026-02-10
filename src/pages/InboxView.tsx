@@ -1,13 +1,27 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { MessageSquare, ChevronRight } from "lucide-react";
+import { MessageSquare, ChevronRight, Trash2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { auth } from "@/firebase/firebase";
 import Chat from "@/firebase/Chat";
 import { db } from "@/firebase/firebase";
-import { collection, query, where, onSnapshot, orderBy } from "firebase/firestore";
+import { collection, query, where, onSnapshot, orderBy, doc, updateDoc, arrayUnion, getDocs, deleteDoc } from "firebase/firestore";
 import { onAuthStateChanged, type User } from "firebase/auth";
+import { toast } from "sonner";
 
 interface Conversation {
   id: string;
@@ -22,6 +36,7 @@ interface Conversation {
     text: string;
     timestamp: any; // Firestore Timestamp
     senderId: string;
+    readBy?: string[];
   };
   relatedPetName: string;
   lastUpdatedAt: any; // Firestore Timestamp
@@ -80,7 +95,8 @@ const InboxView = () => {
         const data = doc.data();
         const unread =
           !!data.lastMessage &&
-          data.lastMessage.senderId !== currentUser.uid;
+          data.lastMessage.senderId !== currentUser.uid &&
+          !(data.lastMessage.readBy || []).includes(currentUser.uid);
         return { id: doc.id, ...data, unread } as Conversation;
       });
       setConversations(convos);
@@ -101,6 +117,40 @@ const InboxView = () => {
       name: convo.participantInfo?.[recipientId]?.name || 'Unknown User',
       initials: convo.participantInfo?.[recipientId]?.initials || 'U',
     };
+  };
+
+  const handleSelectConversation = async (convo: Conversation) => {
+    // Mark as read if it's an unread message from the other user
+    if (convo.unread && currentUser) {
+      try {
+        const chatRef = doc(db, "ChatApp", convo.id);
+        // This assumes lastMessage exists. The unread check ensures this.
+        await updateDoc(chatRef, {
+          'lastMessage.readBy': arrayUnion(currentUser.uid)
+        });
+      } catch (error) {
+        console.error("Error marking message as read:", error);
+      }
+    }
+    setSelectedConversation(convo);
+  };
+
+  const handleDeleteConversation = async (conversationId: string) => {
+    try {
+      // Delete messages subcollection first, as it's not deleted automatically
+      const messagesRef = collection(db, "ChatApp", conversationId, "messages");
+      const messagesSnapshot = await getDocs(messagesRef);
+      const deletePromises = messagesSnapshot.docs.map(docSnapshot => deleteDoc(docSnapshot.ref));
+      await Promise.all(deletePromises);
+
+      // Then delete the conversation document itself
+      await deleteDoc(doc(db, "ChatApp", conversationId));
+
+      toast.success("Conversation deleted successfully.");
+    } catch (error) {
+      console.error("Error deleting conversation:", error);
+      toast.error("Failed to delete conversation. Please try again.");
+    }
   };
 
   if (selectedConversation) {
@@ -131,7 +181,7 @@ const InboxView = () => {
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.08, duration: 0.35 }}
-            onClick={() => setSelectedConversation(convo)}
+            onClick={() => handleSelectConversation(convo)}
           >
             <Card className="cursor-pointer transition-all hover:-translate-y-0.5 hover:card-shadow-hover">
               <CardContent className="flex items-center gap-4 p-5">
@@ -142,16 +192,43 @@ const InboxView = () => {
                 </Avatar>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <span className="font-semibold text-card-foreground">{recipient.name}</span>
+                    <span className={cn("font-semibold text-card-foreground", convo.unread && "font-bold")}>{recipient.name}</span>
                     <span className="text-xs text-muted-foreground">- Pet Name: <span className="font-bold text-inherit">{convo.relatedPetName}</span></span>
                     {convo.unread && <span className="h-2 w-2 rounded-full bg-accent" />}
                   </div>
-                  <p className="mt-0.5 truncate text-sm text-muted-foreground">
+                  <p className={cn("mt-0.5 truncate text-sm", convo.unread ? "text-foreground font-medium" : "text-muted-foreground")}>
                     {convo.lastMessage?.text || 'No messages yet.'}
                   </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
                   <span className="text-xs text-muted-foreground">{formatTimeAgo(convo.lastMessage?.timestamp)}</span>
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 rounded-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent className="z-[1100]">
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This action cannot be undone. This will permanently delete your conversation with <strong>{recipient.name}</strong> about <strong>{convo.relatedPetName}</strong>.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => handleDeleteConversation(convo.id)}>
+                            Delete
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
                   <ChevronRight className="h-4 w-4 text-muted-foreground" />
                 </div>
               </CardContent>
