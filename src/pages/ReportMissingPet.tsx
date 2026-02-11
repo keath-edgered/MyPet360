@@ -48,6 +48,7 @@ const ReportMissingPet = () => {
   const [description, setDescription] = useState("");
   const [lastSeen, setLastSeen] = useState("");
   const [isPublic, setIsPublic] = useState(false);
+  const [status, setStatus] = useState<'missing' | 'found'>("missing");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const mapRef = useRef<L.Map | null>(null);
@@ -93,6 +94,7 @@ const ReportMissingPet = () => {
           setDescription(petData.description || "");
           setLastSeen(petData.lastSeenLocationName);
           setIsPublic(petData.isPublic);
+          setStatus(petData.status || 'missing');
           if (petData.location) {
             const { latitude, longitude } = petData.location;
             setPinnedLocation({ lat: latitude, lng: longitude });
@@ -181,7 +183,7 @@ const ReportMissingPet = () => {
         longitude: pinnedLocation.lng,
       },
       isPublic,
-      status: 'missing' as const,
+      status: status,
     };
 
     try {
@@ -223,7 +225,7 @@ const ReportMissingPet = () => {
             <CardHeader>
               <CardTitle>Listing Settings</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
                 <Label htmlFor="isPublic" className="flex flex-col space-y-1">
                   <span>Make Listing Public</span>
@@ -233,6 +235,25 @@ const ReportMissingPet = () => {
                 </Label>
                 <Switch id="isPublic" checked={isPublic} onCheckedChange={setIsPublic} />
               </div>
+              {isEditMode && (
+                <div className="flex items-center justify-between pt-4 border-t">
+                  <Label htmlFor="status" className="flex flex-col space-y-1">
+                    <span>Pet Status</span>
+                    <span className="font-normal leading-snug text-muted-foreground">
+                      Mark your pet as 'found' when you've been reunited.
+                    </span>
+                  </Label>
+                  <Select onValueChange={(value) => setStatus(value as 'missing' | 'found')} value={status}>
+                    <SelectTrigger id="status" className="w-[180px]">
+                      <SelectValue placeholder="Set status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="missing">Missing</SelectItem>
+                      <SelectItem value="found">Found</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </CardContent>
           </Card>
           <Card>

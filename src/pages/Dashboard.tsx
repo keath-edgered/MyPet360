@@ -1,6 +1,6 @@
 import { useState, lazy, Suspense, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import { PawPrint, Plus, MessageSquare, MapPin, Clock, Inbox, Trash2, FilePenLine, MoreHorizontal } from "lucide-react";
+import { PawPrint, Plus, MessageSquare, MapPin, Clock, Inbox, Trash2, FilePenLine, MoreHorizontal, CheckCircle, AlertCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -8,6 +8,7 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from "@/lib/utils";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -38,6 +39,7 @@ import {
   onSnapshot,
   doc,
   deleteDoc,
+  updateDoc,
 } from "firebase/firestore";
 import { toast } from "sonner";
 import { onAuthStateChanged, User } from "firebase/auth";
@@ -50,6 +52,24 @@ L.Icon.Default.mergeOptions({
   iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
   iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+});
+
+const greenIcon = new L.Icon({
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41]
+});
+
+const redIcon = new L.Icon({
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41]
 });
 
 interface MissingPet {
@@ -66,7 +86,7 @@ interface MissingPet {
     longitude: number;
   };
   isPublic: boolean;
-  status: 'missing'; // Or 'found', etc.
+  status: 'missing' | 'found';
   createdAt: any; // Firestore Timestamp
 }
 
@@ -78,8 +98,22 @@ const Dashboard = () => {
   const mapRef = useRef<L.Map | null>(null);
   const markerLayerRef = useRef<L.LayerGroup | null>(null); // To manage markers easily
   const mapContainerRef = useRef<HTMLDivElement>(null);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [currentUser, setCurrentUser] = useState<User | null>(auth.currentUser);
   const [petToDelete, setPetToDelete] = useState<MissingPet | null>(null);
+
+  const handleToggleStatus = async (petId: string, currentStatus: 'missing' | 'found') => {
+    const newStatus = currentStatus === 'missing' ? 'found' : 'missing';
+    try {
+      await updateDoc(doc(db, "missing_pets", petId), {
+        status: newStatus
+      });
+      toast.success(`Pet listing updated to "${newStatus}".`);
+    } catch (error) {
+      console.error("Error updating pet status:", error);
+      toast.error("Failed to update pet status.");
+    }
+  };
 
   const handleDelete = async (petId: string) => {
     try {
@@ -96,6 +130,34 @@ const Dashboard = () => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user);
     });
+    return () => unsubscribe();
+  }, []);
+
+  // Fetch unread messages count for the inbox tab
+  useEffect(() => {
+    if (!currentUser) {
+      setUnreadCount(0);
+      return;
+    }
+
+    const q = query(
+      collection(db, 'ChatApp'),
+      where('participants', 'array-contains', currentUser.uid)
+    );
+
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      let count = 0;
+      querySnapshot.forEach(doc => {
+        const data = doc.data();
+        if (data.lastMessage && data.lastMessage.senderId !== currentUser.uid && !(data.lastMessage.readBy || []).includes(currentUser.uid)) {
+          count++;
+        }
+      });
+      setUnreadCount(count);
+    }, (error) => {
+      console.error("Error fetching unread messages count:", error);
+    });
+
     return () => unsubscribe();
   }, []);
 
@@ -187,16 +249,24 @@ const Dashboard = () => {
       const bounds = L.latLngBounds([]);
       missingPets.forEach(pet => {
         if (pet.location?.latitude && pet.location?.longitude) {
-          const marker = L.marker([pet.location.latitude, pet.location.longitude])
-            .bindPopup(`
-              <div class="p-1">
-                <h3 class="font-bold text-sm">${pet.petName} (${pet.petType})</h3>
-                <p class="text-xs text-gray-600 mt-1">Last seen: ${pet.lastSeenLocationName}</p>
-                <p class="text-xs text-gray-600">Owner: ${pet.ownerName}</p>
-                <button id="contact-owner-${pet.id}" class="mt-2 text-xs text-blue-600 hover:underline">Contact Owner</button>
-              </div>
-            `);
+          const icon = pet.status === 'found' ? greenIcon : redIcon;
+          const popupContent = `
+            <div class="p-1">
+              <h3 class="font-bold text-sm">${pet.petName} (${pet.petType})</h3>
+              ${pet.status === 'found' ?
+                `<p class="text-xs text-green-600 font-bold mt-1">Status: Found</p>
+                 <p class="text-xs text-gray-600">Location: ${pet.lastSeenLocationName}</p>` :
+                `<p class="text-xs text-gray-600 mt-1">Last seen: ${pet.lastSeenLocationName}</p>`
+              }
+              <p class="text-xs text-gray-600">Owner: ${pet.ownerName}</p>
+              ${pet.status !== 'found' ? `<button id="contact-owner-${pet.id}" class="mt-2 text-xs text-blue-600 hover:underline">Contact Owner</button>` : ''}
+            </div>
+          `;
           
+          const marker = L.marker([pet.location.latitude, pet.location.longitude], { icon })
+            .bindPopup(popupContent)
+            .bindTooltip(`${pet.petName} - <span class="capitalize font-semibold ${pet.status === 'found' ? 'text-green-600' : 'text-red-600'}">${pet.status}</span>`);
+
           marker.on('popupopen', () => {
             const contactButton = document.getElementById(`contact-owner-${pet.id}`);
             if (contactButton) {
@@ -227,6 +297,16 @@ const Dashboard = () => {
   }, [activeTab]);
 
   const handlePetClick = async (pet: MissingPet) => {
+    // If pet is found, just center map on it and show a message
+    if (pet.status === 'found') {
+      toast.info(`${pet.petName} has already been found.`);
+      if (mapRef.current && pet.location) {
+        mapRef.current.setView([pet.location.latitude, pet.location.longitude], 15);
+        setActiveTab("pets");
+      }
+      return;
+    }
+
     // Use the currentUser from state, which is updated by onAuthStateChanged
     if (!currentUser) {
       toast.error("You must be logged in to contact the owner.");
@@ -307,7 +387,11 @@ const Dashboard = () => {
               <TabsTrigger value="inbox" className="gap-2">
                 <Inbox className="h-4 w-4" />
                 Inbox
-                {/* The unread count badge can be added back by lifting state from InboxView */}
+                {unreadCount > 0 && (
+                  <Badge variant="destructive" className="ml-1 h-5 w-5 flex items-center justify-center p-0 rounded-full text-xs font-bold">
+                    {unreadCount}
+                  </Badge>
+                )}
               </TabsTrigger>
             </TabsList>
 
@@ -360,8 +444,8 @@ const Dashboard = () => {
                         </div>
                       </div>
                       <div className="ml-auto flex flex-col items-end gap-1 self-start pl-4">
-                        <Badge className="shrink-0 rounded-full bg-destructive/10 text-destructive">
-                          Missing
+                        <Badge className={cn("shrink-0 rounded-full capitalize", pet.status === 'found' ? 'bg-green-100 text-green-800' : 'bg-destructive/10 text-destructive')}>
+                          {pet.status}
                         </Badge>
                         {currentUser?.uid === pet.ownerId && (
                           <div onClick={(e) => e.stopPropagation()}>
@@ -377,6 +461,17 @@ const Dashboard = () => {
                                   <FilePenLine className="mr-2 h-4 w-4" />
                                   <span>Edit</span>
                                 </DropdownMenuItem>
+                                {pet.status === 'missing' ? (
+                                  <DropdownMenuItem onClick={() => handleToggleStatus(pet.id, pet.status)}>
+                                    <CheckCircle className="mr-2 h-4 w-4" />
+                                    <span>Mark as Found</span>
+                                  </DropdownMenuItem>
+                                ) : (
+                                  <DropdownMenuItem onClick={() => handleToggleStatus(pet.id, pet.status)}>
+                                    <AlertCircle className="mr-2 h-4 w-4" />
+                                    <span>Mark as Missing</span>
+                                  </DropdownMenuItem>
+                                )}
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem onClick={() => setPetToDelete(pet)} className="text-destructive focus:text-destructive">
                                   <Trash2 className="mr-2 h-4 w-4" />
