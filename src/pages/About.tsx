@@ -164,9 +164,9 @@ const About = () => {
                 From finding the nearest vet clinic to flagging a lost pet on a live map — MyPet360 is the all-in-one companion app for every pet parent.
               </p>
               <div className="flex flex-col items-center gap-4 sm:flex-row md:items-start">
-                <button className="rounded-full bg-primary px-8 py-3 font-semibold text-primary-foreground transition-all hover:scale-105 hover:shadow-lg">
+                <a href="/login" className="rounded-full bg-primary px-8 py-3 font-semibold text-primary-foreground transition-all hover:scale-105 hover:shadow-lg inline-block">
                   Explore Now
-                </button>
+                </a>
                 <button className="rounded-full border border-border px-8 py-3 font-semibold text-foreground transition-colors hover:bg-secondary">
                   Learn More
                 </button>

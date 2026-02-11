@@ -97,6 +97,7 @@ const Dashboard = () => {
   const [loadingPets, setLoadingPets] = useState(true);
   const mapRef = useRef<L.Map | null>(null);
   const markerLayerRef = useRef<L.LayerGroup | null>(null); // To manage markers easily
+  const markersRef = useRef<{ [key: string]: L.Marker }>({});
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const [unreadCount, setUnreadCount] = useState(0);
   const [currentUser, setCurrentUser] = useState<User | null>(auth.currentUser);
@@ -112,6 +113,16 @@ const Dashboard = () => {
     } catch (error) {
       console.error("Error updating pet status:", error);
       toast.error("Failed to update pet status.");
+    }
+  };
+
+  const handleZoomToPet = (pet: MissingPet) => {
+    if (mapRef.current && pet.location) {
+      mapRef.current.setView([pet.location.latitude, pet.location.longitude], 15);
+      const marker = markersRef.current[pet.id];
+      if (marker) {
+        marker.openPopup();
+      }
     }
   };
 
@@ -245,6 +256,7 @@ const Dashboard = () => {
   useEffect(() => {
     if (mapRef.current && markerLayerRef.current) {
       markerLayerRef.current.clearLayers(); // Clear existing markers
+      markersRef.current = {};
 
       const bounds = L.latLngBounds([]);
       missingPets.forEach(pet => {
@@ -274,6 +286,7 @@ const Dashboard = () => {
             }
           });
 
+          markersRef.current[pet.id] = marker;
           markerLayerRef.current?.addLayer(marker);
           bounds.extend([pet.location.latitude, pet.location.longitude]);
         }
@@ -380,11 +393,11 @@ const Dashboard = () => {
 
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="mb-6">
-              <TabsTrigger value="pets" className="gap-2">
+              <TabsTrigger value="pets" className="gap-2 text-black data-[state=active]:text-[#3AA893]">
                 <PawPrint className="h-4 w-4" />
                 Missing Pets
               </TabsTrigger>
-              <TabsTrigger value="inbox" className="gap-2">
+              <TabsTrigger value="inbox" className="gap-2 text-black data-[state=active]:text-[#3AA893]">
                 <Inbox className="h-4 w-4" />
                 Inbox
                 {unreadCount > 0 && (
@@ -418,7 +431,7 @@ const Dashboard = () => {
                   initial={{ opacity: 0, y: 15 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.08, duration: 0.35 }}
-                  onClick={() => handlePetClick(pet)}
+                  onClick={() => handleZoomToPet(pet)}
                 >
                   <Card className="cursor-pointer transition-all hover:-translate-y-0.5 hover:card-shadow-hover">
                     <CardContent className="flex items-center gap-4 p-5">

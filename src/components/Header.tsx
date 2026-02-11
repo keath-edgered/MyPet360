@@ -2,10 +2,11 @@ import { useState, useEffect } from "react";
 import { onAuthStateChanged, User, signOut } from "firebase/auth";
 import { auth } from "@/firebase/firebase";
 import { toast } from "sonner";
-import { Link, useNavigate } from "react-router-dom";
-import { MapPin, LogOut } from "lucide-react";
+import { Link, useNavigate, NavLink } from "react-router-dom";
+import { LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import petPawsLogo from "@/components/images/petpawsLogo.png";
 
 const Header = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -44,35 +45,36 @@ const Header = () => {
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/50">
       <div className="container flex items-center justify-between h-16">
-        <Link to="/" className="flex items-center gap-2 text-foreground hover:text-primary transition-colors">
-          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-            <MapPin className="w-4 h-4 text-primary-foreground" />
-          </div>
+        <Link to="/" className="flex items-center gap-2 text-foreground transition-colors hover:text-[#3AA893]">
+          <img src={petPawsLogo} alt="MyPet360 Logo" className="h-10 w-auto" />
           <span className="font-semibold text-lg">MyPet360</span>
         </Link>
         
         <nav className="hidden md:flex items-center gap-8">
-          <Link to="/" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+          <NavLink to="/" className={({isActive}) => `text-sm transition-colors hover:text-[#3AA893] ${isActive ? 'text-[#3AA893]' : 'text-muted-foreground'}`}>
             Find a Vet
-          </Link>
-          <Link to="/pet-food" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+          </NavLink>
+          <NavLink to="/pet-food" className={({isActive}) => `text-sm transition-colors hover:text-[#3AA893] ${isActive ? 'text-[#3AA893]' : 'text-muted-foreground'}`}>
             Find Pet Food
-          </Link>
-          <Link to="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+          </NavLink>
+          <NavLink to="#" className="text-sm text-muted-foreground hover:text-[#3AA893] transition-colors">
             Emergency
-          </Link>
+          </NavLink>
           {!user && (
-          <Link to="/login" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+          <NavLink to="/login" className={({isActive}) => `text-sm transition-colors hover:text-[#3AA893] ${isActive ? 'text-[#3AA893]' : 'text-muted-foreground'}`}>
             Report Missing Pet
-          </Link>
+          </NavLink>
           )}
-          <Link to="/about" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+          <NavLink to="/about" className={({isActive}) => `text-sm transition-colors hover:text-[#3AA893] ${isActive ? 'text-[#3AA893]' : 'text-muted-foreground'}`}>
             About
-          </Link>
+          </NavLink>
           {user && (
-            <Link to="/dashboard" className="text-sm font-medium text-primary hover:text-primary/80 transition-colors">
+            <NavLink to="/dashboard" className={({isActive}) => isActive
+                ? "bg-accent text-accent-foreground px-3 py-1.5 rounded-md text-sm font-medium transition-colors hover:bg-accent/90"
+                : "text-sm font-medium text-[#F16E32] hover:text-[#F16E32]/70 transition-colors"
+            }>
               Dashboard
-            </Link>
+            </NavLink>
           )}
         </nav>
 
