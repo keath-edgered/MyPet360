@@ -23,17 +23,6 @@ const Header = () => {
     return () => unsubscribe();
   }, []);
 
-  useEffect(() => {
-    if (isMenuOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
-    return () => {
-      document.body.style.overflow = 'unset';
-    };
-  }, [isMenuOpen]);
-
   const handleLogout = async () => {
     try {
       await signOut(auth);
@@ -125,9 +114,9 @@ const Header = () => {
         )}
 
         <div className="md:hidden">
-          <Button variant="ghost" size="icon" onClick={() => setIsMenuOpen(true)}>
-            <span className="sr-only">Open menu</span>
-            <Menu className="h-6 w-6" />
+          <Button variant="ghost" size="icon" onClick={() => setIsMenuOpen(!isMenuOpen)}>
+            <span className="sr-only">Toggle menu</span>
+            {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
           </Button>
         </div>
       </div>
@@ -135,60 +124,46 @@ const Header = () => {
       <AnimatePresence>
         {isMenuOpen && (
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] bg-background/95 backdrop-blur-sm"
+            initial={{ height: 0, opacity: 0.5 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0.5 }}
+            transition={{ duration: 0.3, ease: "easeInOut" }}
+            className="md:hidden bg-background border-t border-border overflow-hidden"
           >
-            <div className="container flex items-center justify-between h-16">
-              <Link to="/" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-2 text-foreground">
-                <img src={petPawsLogo} alt="MyPet360 Logo" className="h-10 w-auto" />
-                <span className="font-semibold text-lg">MyPet360</span>
-              </Link>
-              <Button variant="ghost" size="icon" onClick={() => setIsMenuOpen(false)}>
-                <span className="sr-only">Close menu</span>
-                <X className="h-6 w-6" />
-              </Button>
-            </div>
-            <motion.div
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              className="mt-8 flex flex-col items-center gap-6"
-            >
-              <NavLink to="/" onClick={() => setIsMenuOpen(false)} className={({isActive}) => `text-lg transition-colors hover:text-[#3AA893] ${isActive ? 'text-[#3AA893]' : 'text-foreground'}`}>
+            <div className="container py-6 flex flex-col items-start gap-4">
+              <NavLink to="/" onClick={() => setIsMenuOpen(false)} className={({isActive}) => `text-base transition-colors hover:text-[#3AA893] ${isActive ? 'text-[#3AA893]' : 'text-foreground'}`}>
                 Find a Vet
               </NavLink>
-              <NavLink to="/pet-food" onClick={() => setIsMenuOpen(false)} className={({isActive}) => `text-lg transition-colors hover:text-[#3AA893] ${isActive ? 'text-[#3AA893]' : 'text-foreground'}`}>
+              <NavLink to="/pet-food" onClick={() => setIsMenuOpen(false)} className={({isActive}) => `text-base transition-colors hover:text-[#3AA893] ${isActive ? 'text-[#3AA893]' : 'text-foreground'}`}>
                 Find Pet Food
               </NavLink>
-              <NavLink to="#" onClick={() => setIsMenuOpen(false)} className="text-lg text-foreground hover:text-[#3AA893] transition-colors">
+              <NavLink to="#" onClick={() => setIsMenuOpen(false)} className="text-base text-foreground hover:text-[#3AA893] transition-colors">
                 Emergency
               </NavLink>
-              <button onClick={handleReportMissingClick} className="text-lg text-foreground hover:text-[#3AA893] transition-colors">
+              <button onClick={handleReportMissingClick} className="text-base text-foreground hover:text-[#3AA893] transition-colors">
                 Report Missing Pet
               </button>
-              <NavLink to="/about" onClick={() => setIsMenuOpen(false)} className={({isActive}) => `text-lg transition-colors hover:text-[#3AA893] ${isActive ? 'text-[#3AA893]' : 'text-foreground'}`}>
+              <NavLink to="/about" onClick={() => setIsMenuOpen(false)} className={({isActive}) => `text-base transition-colors hover:text-[#3AA893] ${isActive ? 'text-[#3AA893]' : 'text-foreground'}`}>
                 About
               </NavLink>
 
-              <div className="w-4/5 max-w-xs h-px bg-border my-4" />
+              <div className="w-full h-px bg-border my-2" />
 
               {user ? (
-                <>
-                  <NavLink to="/dashboard" onClick={() => setIsMenuOpen(false)} className="text-lg font-medium text-[#F16E32] hover:text-[#F16E32]/70 transition-colors">
+                <div className="w-full flex flex-col items-start gap-4">
+                  <NavLink to="/dashboard" onClick={() => setIsMenuOpen(false)} className="text-base font-medium text-[#F16E32] hover:text-[#F16E32]/70 transition-colors">
                     Dashboard
                   </NavLink>
-                  <Button variant="ghost" onClick={() => { handleLogout(); setIsMenuOpen(false); }} className="text-lg text-muted-foreground">
+                  <button onClick={() => { handleLogout(); setIsMenuOpen(false); }} className="text-base text-muted-foreground">
                     Sign Out
-                  </Button>
-                </>
+                  </button>
+                </div>
               ) : (
-                <Link to="/login" onClick={() => setIsMenuOpen(false)} className="w-4/5 max-w-xs px-4 py-3 text-base font-medium text-primary-foreground bg-primary rounded-lg hover:bg-primary/90 transition-colors inline-block text-center">
+                <Link to="/login" onClick={() => setIsMenuOpen(false)} className="w-full px-4 py-3 text-base font-medium text-primary-foreground bg-primary rounded-lg hover:bg-primary/90 transition-colors inline-block text-center">
                   Get started
                 </Link>
               )}
-            </motion.div>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

@@ -55,7 +55,7 @@ const FeaturedPetStores = () => {
           <a href="#" className="hidden md:inline-flex text-sm font-medium text-primary hover:text-primary/80 transition-colors">View all stores →</a>
         </div>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {stores.map((store, index) => (
             <div key={store.name} className="animate-fade-in-up h-full" style={{ animationDelay: `${index * 0.08}s` }}>
               <VetCard {...store} />
