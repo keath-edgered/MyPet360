@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { auth, db } from "@/firebase/firebase";
+import { onAuthStateChanged } from "firebase/auth";
 import { createClient } from "@supabase/supabase-js";
 import { v4 as uuidv4 } from 'uuid';
 import { addDoc, collection, serverTimestamp, doc, getDoc, updateDoc, GeoPoint } from "firebase/firestore";
@@ -73,6 +74,7 @@ const ReportMissingPet = () => {
   const [pinnedLocation, setPinnedLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<LocationSearchResult[]>([]);
+  const [isAuthChecked, setIsAuthChecked] = useState(false);
 
   useEffect(() => {
     if (mapContainerRef.current && !mapRef.current) {
@@ -83,7 +85,19 @@ const ReportMissingPet = () => {
       map.on("click", handleMapClick);
       mapRef.current = map;
     }
-  }, []);
+  }, [isAuthChecked]);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        toast.error("You must be logged in to report a missing pet.");
+        navigate("/login");
+      } else {
+        setIsAuthChecked(true);
+      }
+    });
+    return () => unsubscribe();
+  }, [navigate]);
 
   useEffect(() => {
     if (isEditMode && petId) {
@@ -186,12 +200,7 @@ const ReportMissingPet = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const currentUser = auth.currentUser;
-    if (!currentUser) {
-      toast.error("You must be logged in to report a missing pet.");
-      navigate("/login");
-      return;
-    }
+    const currentUser = auth.currentUser!; // We can now assert currentUser is not null
     if (!petName || !petType || (petType === "Other" && !otherPetType) || !lastSeen || !pinnedLocation) {
       toast.error("Please fill in all required fields and pin a location on the map.");
       return;
@@ -271,11 +280,21 @@ const ReportMissingPet = () => {
     }
   };
 
+  if (!isAuthChecked) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="text-center">
+          <p className="text-muted-foreground">Checking authentication...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
       <main className="container mx-auto max-w-4xl px-6 pt-24 pb-8">
-        <Button variant="ghost" onClick={() => navigate(-1)} className="mb-4 -ml-4">
+        <Button variant="ghost" onClick={() => navigate("/dashboard")} className="mb-4 -ml-4">
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Dashboard
         </Button>

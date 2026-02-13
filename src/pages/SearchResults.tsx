@@ -74,12 +74,12 @@ const SearchResults = () => {
               </button>
             </div>
           ) : displayedVets.length > 0 ? (
-            <div className="grid lg:grid-cols-3 gap-6 h-[600px]">
-              <div className="lg:col-span-2">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:h-[600px]">
+              <div className="lg:col-span-2 h-[300px] lg:h-full">
                 <GoogleMapComponent vets={displayedVets} location={location} selectedVetId={selectedVetId} onSelectVet={(id) => setSelectedVetId(id)} />
               </div>
 
-              <div className="lg:col-span-1 overflow-y-auto">
+              <div className="lg:col-span-1 lg:overflow-y-auto">
                 <div className="space-y-4">
                   {displayedVets.map((vet) => (
                     <div

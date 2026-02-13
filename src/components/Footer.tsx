@@ -11,7 +11,7 @@ const Footer = () => {
             <span className="font-semibold text-lg">MyPet360</span>
           </Link>
           
-          <nav className="flex items-center gap-8">
+          <nav className="flex flex-col sm:flex-row items-center gap-4 text-center sm:gap-8">
             <a href="#" className="text-sm hover:text-background transition-colors">
               Privacy
             </a>
