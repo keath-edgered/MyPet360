@@ -140,7 +140,7 @@ const Login = () => {
           className="w-full max-w-md"
         >
           <h1 className="mb-2 text-2xl font-bold text-foreground">
-            {isSignUp ? "Create your account" : "Welcome back"}
+            {isSignUp ? "Create your account" : "Welcome!"}
           </h1>
           <p className="mb-8 text-sm text-muted-foreground">
             {isSignUp

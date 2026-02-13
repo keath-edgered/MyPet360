@@ -72,6 +72,13 @@ const redIcon = new L.Icon({
   shadowSize: [41, 41]
 });
 
+const heartSvgForMask = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="black">
+  <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+</svg>`;
+
+// btoa is a browser API, this will work in the client-side environment.
+const heartMaskUrl = `url('data:image/svg+xml;base64,${typeof window !== 'undefined' ? window.btoa(heartSvgForMask) : ''}')`;
+
 interface MissingPet {
   id: string; // Firestore document ID
   ownerId: string;
@@ -86,8 +93,9 @@ interface MissingPet {
     longitude: number;
   };
   isPublic: boolean;
-  status: 'missing' | 'found';
+  status: 'missing' | 'reunited';
   createdAt: any; // Firestore Timestamp
+  imageUrl?: string;
 }
 
 const Dashboard = () => {
@@ -103,8 +111,8 @@ const Dashboard = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(auth.currentUser);
   const [petToDelete, setPetToDelete] = useState<MissingPet | null>(null);
 
-  const handleToggleStatus = async (petId: string, currentStatus: 'missing' | 'found') => {
-    const newStatus = currentStatus === 'missing' ? 'found' : 'missing';
+  const handleToggleStatus = async (petId: string, currentStatus: 'missing' | 'reunited') => {
+    const newStatus = currentStatus === 'missing' ? 'reunited' : 'missing';
     try {
       await updateDoc(doc(db, "missing_pets", petId), {
         status: newStatus
@@ -261,23 +269,76 @@ const Dashboard = () => {
       const bounds = L.latLngBounds([]);
       missingPets.forEach(pet => {
         if (pet.location?.latitude && pet.location?.longitude) {
-          const icon = pet.status === 'found' ? greenIcon : redIcon;
+          let icon;
+          if (pet.imageUrl) {
+            const borderColor = pet.status === 'reunited' ? '#22c55e' : '#ef4444'; // green-500 and red-500
+            icon = L.divIcon({
+              className: 'custom-pet-marker',
+              html: `
+                <div style="
+                  width: 48px;
+                  height: 48px;
+                  background-color: ${borderColor};
+                  -webkit-mask-image: ${heartMaskUrl};
+                  mask-image: ${heartMaskUrl};
+                  -webkit-mask-size: contain;
+                  mask-size: contain;
+                  -webkit-mask-repeat: no-repeat;
+                  mask-repeat: no-repeat;
+                  -webkit-mask-position: center;
+                  mask-position: center;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+                ">
+                  <div style="
+                    width: 40px;
+                    height: 40px;
+                    background-image: url(${pet.imageUrl});
+                    background-size: cover;
+                    background-position: center;
+                    -webkit-mask-image: ${heartMaskUrl};
+                    mask-image: ${heartMaskUrl};
+                    -webkit-mask-size: contain;
+                    mask-size: contain;
+                    -webkit-mask-repeat: no-repeat;
+                    mask-repeat: no-repeat;
+                    -webkit-mask-position: center;
+                    mask-position: center;
+                  "></div>
+                </div>`,
+              iconSize: [48, 48],
+              iconAnchor: [24, 48],
+              popupAnchor: [0, -48]
+            });
+          } else {
+            icon = pet.status === 'reunited' ? greenIcon : redIcon;
+          }
           const popupContent = `
-            <div class="p-1">
+            <div class="p-1" style="min-width: 200px; max-width: 250px;">
+              ${pet.imageUrl ? `<img src="${pet.imageUrl}" alt="${pet.petName}" class="w-full h-auto object-contain rounded-md mb-2" style="max-height: 200px;" />` : ''}
               <h3 class="font-bold text-sm">${pet.petName} (${pet.petType})</h3>
-              ${pet.status === 'found' ?
-                `<p class="text-xs text-green-600 font-bold mt-1">Status: Found</p>
+              ${pet.status === 'reunited' ?
+                `<p class="text-xs text-green-600 font-bold mt-1">Status: Reunited</p>
                  <p class="text-xs text-gray-600">Location: ${pet.lastSeenLocationName}</p>` :
                 `<p class="text-xs text-gray-600 mt-1">Last seen: ${pet.lastSeenLocationName}</p>`
               }
               <p class="text-xs text-gray-600">Owner: ${pet.ownerName}</p>
-              ${pet.status !== 'found' ? `<button id="contact-owner-${pet.id}" class="mt-2 text-xs text-blue-600 hover:underline">Contact Owner</button>` : ''}
+              <div class="mt-2 flex items-center gap-4">
+                ${pet.status !== 'reunited' ? `<button id="contact-owner-${pet.id}" class="text-xs text-blue-600 hover:underline">Contact Owner</button>` : ''}
+                <a href="https://www.google.com/maps?q=${pet.location.latitude},${pet.location.longitude}" target="_blank" rel="noopener noreferrer" class="text-xs text-blue-600 hover:underline">View on Google Maps →</a>
+              </div>
             </div>
           `;
           
           const marker = L.marker([pet.location.latitude, pet.location.longitude], { icon })
             .bindPopup(popupContent)
-            .bindTooltip(`${pet.petName} - <span class="capitalize font-semibold ${pet.status === 'found' ? 'text-green-600' : 'text-red-600'}">${pet.status}</span>`);
+            .bindTooltip(`${pet.petName} - <span class="capitalize font-semibold ${pet.status === 'reunited' ? 'text-green-600' : 'text-red-600'}">${pet.status}</span>`);
+
+          marker.on('mouseover', () => {
+            marker.openPopup();
+          });
 
           marker.on('popupopen', () => {
             const contactButton = document.getElementById(`contact-owner-${pet.id}`);
@@ -311,8 +372,8 @@ const Dashboard = () => {
 
   const handlePetClick = async (pet: MissingPet) => {
     // If pet is found, just center map on it and show a message
-    if (pet.status === 'found') {
-      toast.info(`${pet.petName} has already been found.`);
+    if (pet.status === 'reunited') {
+      toast.info(`${pet.petName} has already been reunited.`);
       if (mapRef.current && pet.location) {
         mapRef.current.setView([pet.location.latitude, pet.location.longitude], 15);
         setActiveTab("pets");
@@ -435,9 +496,13 @@ const Dashboard = () => {
                 >
                   <Card className="cursor-pointer transition-all hover:-translate-y-0.5 hover:card-shadow-hover">
                     <CardContent className="flex items-center gap-4 p-5">
-                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-secondary text-secondary-foreground">
-                        <PawPrint className="h-6 w-6" />
-                      </div>
+                      {pet.imageUrl ? (
+                        <img src={pet.imageUrl} alt={pet.petName} className="h-12 w-12 shrink-0 rounded-xl object-cover" />
+                      ) : (
+                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-secondary text-secondary-foreground">
+                          <PawPrint className="h-6 w-6" />
+                        </div>
+                      )}
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
                           <h3 className="font-semibold text-card-foreground">{pet.petName}</h3>
@@ -457,7 +522,7 @@ const Dashboard = () => {
                         </div>
                       </div>
                       <div className="ml-auto flex flex-col items-end gap-1 self-start pl-4">
-                        <Badge className={cn("shrink-0 rounded-full capitalize", pet.status === 'found' ? 'bg-green-100 text-green-800' : 'bg-destructive/10 text-destructive')}>
+                        <Badge className={cn("shrink-0 rounded-full capitalize", pet.status === 'reunited' ? 'bg-green-100 text-green-800' : 'bg-destructive/10 text-destructive')}>
                           {pet.status}
                         </Badge>
                         {currentUser?.uid === pet.ownerId && (

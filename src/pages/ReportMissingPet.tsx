@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { auth, db } from "@/firebase/firebase";
-import { addDoc, collection, serverTimestamp, doc, getDoc, updateDoc } from "firebase/firestore";
+import { createClient } from "@supabase/supabase-js";
+import { v4 as uuidv4 } from 'uuid';
+import { addDoc, collection, serverTimestamp, doc, getDoc, updateDoc, GeoPoint } from "firebase/firestore";
 import { toast } from "sonner";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -30,6 +32,16 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
 
+// IMPORTANT: In a real app, move this to a separate supabase client file (e.g., src/supabase.ts)
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.error("Supabase URL or Anon Key is missing. Please check your .env file.");
+}
+
+const supabase = createClient(supabaseUrl!, supabaseAnonKey!);
+
 interface LocationSearchResult {
   place_id: number;
   display_name: string;
@@ -48,8 +60,12 @@ const ReportMissingPet = () => {
   const [description, setDescription] = useState("");
   const [lastSeen, setLastSeen] = useState("");
   const [isPublic, setIsPublic] = useState(false);
-  const [status, setStatus] = useState<'missing' | 'found'>("missing");
+  const [status, setStatus] = useState<'missing' | 'reunited'>("missing");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [existingImageUrl, setExistingImageUrl] = useState<string | null>(null);
 
   const mapRef = useRef<L.Map | null>(null);
   const markerRef = useRef<L.Marker | null>(null);
@@ -99,6 +115,8 @@ const ReportMissingPet = () => {
             const { latitude, longitude } = petData.location;
             setPinnedLocation({ lat: latitude, lng: longitude });
           }
+          setExistingImageUrl(petData.imageUrl || null);
+          setImagePreview(petData.imageUrl || null);
         } else {
           toast.error("Pet listing not found.");
           navigate("/dashboard");
@@ -158,6 +176,14 @@ const ReportMissingPet = () => {
     }
   }, [pinnedLocation]);
 
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setImageFile(file);
+      setImagePreview(URL.createObjectURL(file));
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const currentUser = auth.currentUser;
@@ -172,6 +198,41 @@ const ReportMissingPet = () => {
     }
 
     setIsSubmitting(true);
+    let imageUrl = existingImageUrl; // Start with existing image URL
+
+    if (imageFile) {
+      setIsUploading(true);
+      try {
+        // Create a unique path for the image. Using user ID for ownership.
+        const fileName = `${currentUser.uid}/${uuidv4()}`;
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from("pet-images") // User must create this bucket in Supabase and set public read access.
+          .upload(fileName, imageFile, {
+            cacheControl: '3600',
+            upsert: false,
+          });
+
+        if (uploadError) {
+          throw uploadError;
+        }
+
+        // Get the public URL of the uploaded image
+        const { data: urlData } = supabase.storage
+          .from("pet-images")
+          .getPublicUrl(uploadData.path);
+        
+        imageUrl = urlData.publicUrl;
+
+      } catch (error) {
+        console.error("Error uploading image to Supabase:", error);
+        toast.error("Failed to upload image. Please try again.");
+        setIsSubmitting(false);
+        setIsUploading(false);
+        return;
+      } finally {
+        setIsUploading(false);
+      }
+    }
     const petDataObject = {
       petName,
       petType: petType === "Other" ? otherPetType : petType,
@@ -184,6 +245,7 @@ const ReportMissingPet = () => {
       },
       isPublic,
       status: status,
+      imageUrl: imageUrl || "",
     };
 
     try {
@@ -240,16 +302,16 @@ const ReportMissingPet = () => {
                   <Label htmlFor="status" className="flex flex-col space-y-1">
                     <span>Pet Status</span>
                     <span className="font-normal leading-snug text-muted-foreground">
-                      Mark your pet as 'found' when you've been reunited.
+                      Mark your pet as 'reunited' when you've been reunited.
                     </span>
                   </Label>
-                  <Select onValueChange={(value) => setStatus(value as 'missing' | 'found')} value={status}>
+                  <Select onValueChange={(value) => setStatus(value as 'missing' | 'reunited')} value={status}>
                     <SelectTrigger id="status" className="w-[180px]">
                       <SelectValue placeholder="Set status" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="missing">Missing</SelectItem>
-                      <SelectItem value="found">Found</SelectItem>
+                      <SelectItem value="reunited">Reunited</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -261,6 +323,15 @@ const ReportMissingPet = () => {
               <CardTitle>Pet Details</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="petImage">Pet Image</Label>
+                <Input id="petImage" type="file" accept="image/*" onChange={handleImageChange} className="h-15 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"/>
+                {imagePreview && (
+                  <div className="mt-4">
+                    <img src={imagePreview} alt="Pet preview" className="w-32 h-32 object-cover rounded-md border" />
+                  </div>
+                )}
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="petName">Pet Name</Label>
                 <Input id="petName" value={petName} onChange={e => setPetName(e.target.value)} placeholder="e.g., Buddy" required />
@@ -335,8 +406,8 @@ const ReportMissingPet = () => {
               )}
             </CardContent>
           </Card>
-          <Button type="submit" disabled={isSubmitting} className="w-full md:w-full md:ml-full md:block">
-            {isSubmitting ? (isEditMode ? "Saving..." : "Submitting...") : (isEditMode ? "Save Changes" : "Submit Report")}
+          <Button type="submit" disabled={isSubmitting || isUploading} className="w-full md:w-full md:ml-full md:block">
+            {isSubmitting ? (isUploading ? "Uploading Image..." : (isEditMode ? "Saving..." : "Submitting...")) : (isEditMode ? "Save Changes" : "Submit Report")}
           </Button>
         </form>
       </main>

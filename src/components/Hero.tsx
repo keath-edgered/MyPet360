@@ -56,7 +56,7 @@ const Hero = () => {
   };
 
   return (
-    <section className="hero-gradient min-h-[55vh] flex items-center pt-16">
+    <section className="hero-gradient min-h-[50vh] flex items-center pt-16">
       <div className="container">
         <div className="max-w-2xl mx-auto text-center">
           <h1 className="mt-6 text-4xl md:text-5xl lg:text-6xl font-semibold text-foreground tracking-tight animate-fade-in">
