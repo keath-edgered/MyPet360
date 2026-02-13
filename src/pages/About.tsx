@@ -1,8 +1,12 @@
 import { motion, type Variants } from "framer-motion";
 import { MapPin, Search, Heart, Shield, PawPrint, ShoppingBag } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import { onAuthStateChanged, User } from "firebase/auth";
+import { auth } from "@/firebase/firebase";
+import { toast } from "sonner";
 
 const heroPets = "https://img.freepik.com/free-photo/young-lightskinned-brunette-woman-kisses-her-beloved-dog-tightly-while-holding-arms-pink-background-love-pets-joy-tenderness_197531-31334.jpg?t=st=1770445490~exp=1770449090~hmac=5c51dd0064ef1927891bf18561fa5f38610a502c7ddc5d83ccc2f281f492e524";
 
@@ -140,6 +144,26 @@ const CountUp = ({ target, duration = 1200 }: { target: number; duration?: numbe
 };
 
 const About = () => {
+  const navigate = useNavigate();
+  const [user, setUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const handleNavigation = () => {
+    if (user) {
+      toast.success(`Welcome back, ${user.displayName || 'friend'}!`, {
+        description: "You are being redirected to your dashboard.",
+      });
+      navigate('/dashboard');
+    } else {
+      navigate('/login');
+    }
+  };
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -164,9 +188,9 @@ const About = () => {
                 From finding the nearest vet clinic to flagging a lost pet on a live map — MyPet360 is the all-in-one companion app for every pet parent.
               </p>
               <div className="flex flex-col items-center gap-4 sm:flex-row md:items-start">
-                <a href="/login" className="rounded-full bg-primary px-8 py-3 font-semibold text-primary-foreground transition-all hover:scale-105 hover:shadow-lg inline-block">
+                <button onClick={handleNavigation} className="rounded-full bg-primary px-8 py-3 font-semibold text-primary-foreground transition-all hover:scale-105 hover:shadow-lg inline-block">
                   Explore Now
-                </a>
+                </button>
                 <button className="rounded-full border border-border px-8 py-3 font-semibold text-foreground transition-colors hover:bg-secondary">
                   Learn More
                 </button>
@@ -263,7 +287,7 @@ const About = () => {
           <p className="mb-8 text-muted-foreground">
             Join thousands of pet parents who trust MyPet360 every day.
           </p>
-         <button onClick={() => window.location.href = './Login'} className="rounded-full bg-accent px-10 py-3.5 font-semibold text-accent-foreground transition-all hover:scale-105 hover:shadow-lg">
+         <button onClick={handleNavigation} className="rounded-full bg-accent px-10 py-3.5 font-semibold text-accent-foreground transition-all hover:scale-105 hover:shadow-lg">
             Get Started Free
         </button>
         </motion.div>

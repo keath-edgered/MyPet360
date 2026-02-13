@@ -4,10 +4,10 @@ export interface Vet {
   address: string;
   latitude: number;
   longitude: number;
-  rating: number;
-  reviews: number;
+  rating?: number;
+  reviews?: number;
   distance: string;
   specialties: string[];
-  isOpen: boolean;
+  isOpen?: boolean;
   image?: string; // Optional as it's not available for all vets (e.g. search results)
 }

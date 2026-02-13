@@ -9,6 +9,7 @@ import Dashboard from "./pages/Dashboard";
 import SearchResults from "./pages/SearchResults";
 import PetFood from "./pages/PetFood"; // This is actually pet food search results
 import About from "./pages/About";
+import Emergency from "./components/Emergency";
 import ReportMissingPet from "./pages/ReportMissingPet";
 import TestMap from "./pages/TestMap";
 import NotFound from "./pages/NotFound";
@@ -24,6 +25,7 @@ function App() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/search" element={<SearchResults />} />
           <Route path="/pet-food-search" element={<PetFood />} />
+          <Route path="/emergency" element={<Emergency />} />
           <Route path="/about" element={<About />} />
           <Route path="/report-missing-pet" element={<ReportMissingPet />} />
           <Route path="/report-missing-pet/:petId" element={<ReportMissingPet />} />

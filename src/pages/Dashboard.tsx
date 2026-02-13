@@ -108,7 +108,8 @@ const Dashboard = () => {
   const markersRef = useRef<{ [key: string]: L.Marker }>({});
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [currentUser, setCurrentUser] = useState<User | null>(auth.currentUser);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [isAuthChecked, setIsAuthChecked] = useState(false);
   const [petToDelete, setPetToDelete] = useState<MissingPet | null>(null);
 
   const handleToggleStatus = async (petId: string, currentStatus: 'missing' | 'reunited') => {
@@ -147,10 +148,16 @@ const Dashboard = () => {
   // Make the component reactive to auth state changes
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setCurrentUser(user);
+      if (user) {
+        setCurrentUser(user);
+        setIsAuthChecked(true);
+      } else {
+        toast.error("You must be logged in to view the dashboard.");
+        navigate("/login");
+      }
     });
     return () => unsubscribe();
-  }, []);
+  }, [navigate]);
 
   // Fetch unread messages count for the inbox tab
   useEffect(() => {
@@ -182,15 +189,18 @@ const Dashboard = () => {
 
   // Map initialization
   useEffect(() => {
-    if (mapContainerRef.current && !mapRef.current) {
+    if (isAuthChecked && mapContainerRef.current && !mapRef.current) {
       const map = L.map(mapContainerRef.current).setView([-25.2744, 133.7751], 4); // Center of Australia
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
       }).addTo(map);
       markerLayerRef.current = L.layerGroup().addTo(map);
       mapRef.current = map;
+      // Sometimes Leaflet initializes before the container has its final size,
+      // especially in dynamic UIs. This forces a re-render to fix tile loading.
+      setTimeout(() => map.invalidateSize(), 100);
     }
-  }, []);
+  }, [isAuthChecked]);
 
   // Fetching missing pets and updating map
   useEffect(() => {
@@ -436,6 +446,19 @@ const Dashboard = () => {
 
     setActiveTab("inbox");
   };
+
+  if (!isAuthChecked) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <div className="flex pt-48 items-center justify-center">
+          <div className="text-center">
+            <p className="text-muted-foreground">Verifying access...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">

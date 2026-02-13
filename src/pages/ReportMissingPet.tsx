@@ -84,6 +84,9 @@ const ReportMissingPet = () => {
       }).addTo(map);
       map.on("click", handleMapClick);
       mapRef.current = map;
+      // Sometimes Leaflet initializes before the container has its final size,
+      // especially in dynamic UIs. This forces a re-render to fix tile loading.
+      setTimeout(() => map.invalidateSize(), 100);
     }
   }, [isAuthChecked]);
 

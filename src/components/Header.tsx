@@ -71,7 +71,7 @@ const Header = () => {
           <NavLink to="/pet-food" className={({isActive}) => `text-sm transition-colors hover:text-[#3AA893] ${isActive ? 'text-[#3AA893]' : 'text-muted-foreground'}`}>
             Find Pet Food
           </NavLink>
-          <NavLink to="#" className="text-sm text-muted-foreground hover:text-[#3AA893] transition-colors">
+          <NavLink to="/emergency" className={({isActive}) => `text-sm transition-colors hover:text-[#3AA893] ${isActive ? 'text-[#3AA893]' : 'text-muted-foreground'}`}>
             Emergency
           </NavLink>
           <button
@@ -137,7 +137,7 @@ const Header = () => {
               <NavLink to="/pet-food" onClick={() => setIsMenuOpen(false)} className={({isActive}) => `text-base transition-colors hover:text-[#3AA893] ${isActive ? 'text-[#3AA893]' : 'text-foreground'}`}>
                 Find Pet Food
               </NavLink>
-              <NavLink to="#" onClick={() => setIsMenuOpen(false)} className="text-base text-foreground hover:text-[#3AA893] transition-colors">
+              <NavLink to="/emergency" onClick={() => setIsMenuOpen(false)} className={({isActive}) => `text-base transition-colors hover:text-[#3AA893] ${isActive ? 'text-[#3AA893]' : 'text-foreground'}`}>
                 Emergency
               </NavLink>
               <button onClick={handleReportMissingClick} className="text-base text-foreground hover:text-[#3AA893] transition-colors">
