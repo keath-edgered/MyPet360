@@ -214,7 +214,7 @@ const useOpenStreetMapSearch = ({ location, query, category = 'veterinary' }: Us
   // Helper: geocode a place and query Overpass for items inside the bbox
   const fetchVetsForLocation = async (loc: string, q?: string, category: 'veterinary' | 'petfood' = 'veterinary'): Promise<VetSearchResult[]> => {
     try {
-      const geocodeUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(loc)}&format=json&countrycodes=au&limit=1`;
+      const geocodeUrl = `/nominatim/search?q=${encodeURIComponent(loc)}&format=json&countrycodes=au&limit=1`;
       const geocodeResponse = await fetch(geocodeUrl);
       const geocodeData = await geocodeResponse.json();
       if (!geocodeData || geocodeData.length === 0) return [];
@@ -337,7 +337,7 @@ const useOpenStreetMapSearch = ({ location, query, category = 'veterinary' }: Us
           bbox = `${latNum - delta},${lonNum - delta},${latNum + delta},${lonNum + delta}`;
         } else {
           // Step 1: Geocode the location to get coordinates using Nominatim
-          const geocodeUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(location)}&format=json&countrycodes=au&limit=1`;
+          const geocodeUrl = `/nominatim/search?q=${encodeURIComponent(location)}&format=json&countrycodes=au&limit=1`;
           const geocodeResponse = await fetch(geocodeUrl);
           const geocodeData = await geocodeResponse.json();
 
@@ -418,7 +418,7 @@ const useOpenStreetMapSearch = ({ location, query, category = 'veterinary' }: Us
               
               try {
                 const searchAddr = `${name}, ${element.tags?.["addr:city"] || element.tags?.["addr:town"] || location}`;
-                const nominatimUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(searchAddr)}&format=json&countrycodes=au&limit=1`;
+                const nominatimUrl = `/nominatim/search?q=${encodeURIComponent(searchAddr)}&format=json&countrycodes=au&limit=1`;
                 const nominatimResponse = await fetch(nominatimUrl);
                 const nominatimData = await nominatimResponse.json();
                 
