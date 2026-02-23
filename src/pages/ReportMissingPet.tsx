@@ -149,7 +149,7 @@ const ReportMissingPet = () => {
     
     // Reverse geocode to get address
     try {
-      const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+      const response = await fetch(`/nominatim/reverse?format=json&lat=${lat}&lon=${lng}`);
       const data = await response.json();
       if (data.display_name) {
         setLastSeen(data.display_name);
@@ -172,7 +172,7 @@ const ReportMissingPet = () => {
   const handleSearch = async () => {
     if (!searchQuery) return;
     try {
-      const response = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(searchQuery)}&format=json&limit=5&countrycodes=au`);
+      const response = await fetch(`/nominatim/search?q=${encodeURIComponent(searchQuery)}&format=json&limit=5&countrycodes=au`);
       const data: LocationSearchResult[] = await response.json();
       setSearchResults(data);
     } catch (error) {
